@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SCAN — AI CREATIVE LAB</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@300;400;500&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --accent: #4AE54A;
+    --bg: #0A0A0A;
+    --surface: #111111;
+    --surface2: #1A1A1A;
+    --border: #2A2A2A;
+    --text: #FFFFFF;
+    --text-sub: #BBBBBB;
+    --text-muted: #666666;
+    --danger: #FF4444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    color: var(--accent);
+    letter-spacing: 4px;
+  }
+
+  .logo-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .api-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: none;
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+  }
+
+  .api-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* API MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 32px;
+    width: 480px;
+    max-width: 90vw;
+  }
+
+  .modal-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    margin-bottom: 24px;
+  }
+
+  .modal-field { margin-bottom: 16px; }
+
+  .modal-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .modal-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .modal-input:focus { border-color: var(--accent); }
+
+  .modal-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+  }
+
+  .btn-save {
+    background: var(--accent);
+    color: #000;
+    border: none;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 2px;
+    padding: 10px 24px;
+    cursor: pointer;
+    flex: 1;
+    transition: opacity 0.2s;
+  }
+
+  .btn-save:hover { opacity: 0.85; }
+
+  .btn-cancel {
+    background: none;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-cancel:hover { border-color: var(--text-muted); color: var(--text); }
+
+  /* MAIN */
+  .main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 48px 32px;
+  }
+
+  /* TABS */
+  .tab-row {
+    display: flex;
+    gap: 0;
+    margin-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 3px;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    padding: 12px 28px 12px 0;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+  }
+
+  .tab.active { color: var(--accent); }
+
+  .tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent);
+  }
+
+  .tab:hover:not(.active) { color: var(--text-sub); }
+
+  /* INPUT AREA */
+  .input-area { margin-bottom: 24px; }
+
+  .input-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    display: block;
+  }
+
+  .url-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    padding: 14px 18px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .url-input:focus { border-color: var(--accent); }
+  .url-input::placeholder { color: var(--text-muted); }
+
+  .text-input-toggle {
+    display: flex;
+    gap: 0;
+    margin-bottom: 16px;
+  }
+
+  .toggle-btn {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    padding: 8px 20px;
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .toggle-btn:first-child { border-right: none; }
+
+  .toggle-btn.active {
+    background: var(--surface2);
+    color: var(--text);
+    border-color: var(--accent);
+  }
+
+  .textarea-input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    padding: 14px 18px;
+    outline: none;
+    resize: vertical;
+    min-height: 180px;
+    line-height: 1.7;
+    transition: border-color 0.2s;
+  }
+
+  .textarea-input:focus { border-color: var(--accent); }
+  .textarea-input::placeholder { color: var(--text-muted); }
+
+  /* DEPTH SELECTOR */
+  .depth-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+
+  .depth-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .depth-options {
+    display: flex;
+    gap: 0;
+  }
+
+  .depth-btn {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px;
+    letter-spacing: 2px;
+    padding: 8px 22px;
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .depth-btn:not(:last-child) { border-right: none; }
+
+  .depth-btn.active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+  }
+
+  .depth-btn:hover:not(.active) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .depth-desc {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-left: 4px;
+  }
+
+  /* RUN BUTTON */
+  .run-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 4px;
+    padding: 16px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    margin-bottom: 40px;
+  }
+
+  .run-btn:hover:not(:disabled) { opacity: 0.85; }
+  .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* STATUS */
+  .status-bar {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+    font-size: 13px;
+    color: var(--text-sub);
+  }
+
+  .status-bar.visible { display: flex; }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* REPORT */
+  .report-container {
+    display: none;
+    animation: fadeIn 0.4s ease;
+  }
+
+  .report-container.visible { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .report-header {
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 16px;
+    margin-bottom: 32px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .report-title-block {}
+
+  .report-tag {
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .report-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .report-depth-badge {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: #000;
+    background: var(--accent);
+    padding: 4px 12px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* REPORT SECTIONS */
+  .report-section {
+    margin-bottom: 36px;
+  }
+
+  .section-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .section-content {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.85;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .section-content p { margin-bottom: 10px; }
+
+  /* ARGUMENT ITEMS */
+  .arg-item {
+    border-left: 2px solid var(--border);
+    padding: 12px 0 12px 18px;
+    margin-bottom: 18px;
+    transition: border-color 0.2s;
+  }
+
+  .arg-item:hover { border-left-color: var(--accent); }
+
+  .arg-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .arg-body {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.85;
+  }
+
+  /* TIMESTAMP TABLE */
+  .ts-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .ts-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    line-height: 1.6;
+    vertical-align: top;
+  }
+
+  .ts-table td:first-child {
+    color: var(--accent);
+    white-space: nowrap;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    width: 100px;
+  }
+
+  .ts-table tr:last-child td { border-bottom: none; }
+
+  /* CAUTION BOX */
+  .caution-box {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--danger);
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--text-sub);
+    line-height: 1.7;
+    margin-top: 8px;
+  }
+
+  /* EXPAND LENS */
+  .expand-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    padding: 24px;
+    margin-bottom: 36px;
+  }
+
+  .expand-item {
+    margin-bottom: 22px;
+  }
+
+  .expand-item:last-child { margin-bottom: 0; }
+
+  .expand-q {
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .expand-a {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.85;
+  }
+
+  /* NEXT QUESTIONS */
+  .next-q-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .next-q-list li {
+    padding: 12px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.7;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .next-q-list li::before {
+    content: '→';
+    color: var(--accent);
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ACTION BUTTONS */
+  .action-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .action-btn {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px;
+    letter-spacing: 2px;
+    padding: 12px 24px;
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .action-btn.primary {
+    background: var(--surface);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .action-btn.primary:hover { background: var(--accent); color: #000; }
+
+  /* SEARCH GUIDE */
+  .search-guide {
+    display: none;
+    margin-top: 24px;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .search-guide.visible { display: block; }
+
+  .search-guide-header {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .search-guide-header::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .search-col {
+    margin-bottom: 20px;
+  }
+
+  .search-col-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .search-chips {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .search-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text);
+    gap: 12px;
+    transition: border-color 0.2s;
+  }
+
+  .search-chip:hover { border-color: var(--accent); }
+
+  .copy-chip-btn {
+    font-size: 10px;
+    color: var(--text-muted);
+    background: none;
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 1px;
+    white-space: nowrap;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .copy-chip-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-chip-btn.copied { color: var(--accent); border-color: var(--accent); }
+
+  .explore-directions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .explore-item {
+    padding: 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 2px solid var(--accent);
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.7;
+  }
+
+  .explore-arrow {
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  /* ERROR */
+  .error-box {
+    display: none;
+    border: 1px solid var(--danger);
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--danger);
+    margin-bottom: 16px;
+    line-height: 1.6;
+  }
+
+  .error-box.visible { display: block; }
+
+  /* TOAST */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    background: var(--accent);
+    color: #000;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    letter-spacing: 2px;
+    padding: 12px 20px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <span class="logo">SCAN</span>
+    <span class="logo-sub">AI Creative Lab</span>
+  </div>
+  <button class="api-btn" onclick="openModal()">API KEYS</button>
+</header>
+
+<!-- API MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <div class="modal-title">API KEYS</div>
+    <div class="modal-field">
+      <label class="modal-label">Claude API Key</label>
+      <input type="password" class="modal-input" id="claudeKeyInput" placeholder="sk-ant-...">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">Gemini API Key</label>
+      <input type="password" class="modal-input" id="geminiKeyInput" placeholder="AIza...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-save" onclick="saveKeys()">SAVE</button>
+      <button class="btn-cancel" onclick="closeModal()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- TABS -->
+  <div class="tab-row">
+    <button class="tab active" id="tabVideo" onclick="switchTab('video')">VIDEO</button>
+    <button class="tab" id="tabText" onclick="switchTab('text')">TEXT</button>
+  </div>
+
+  <!-- VIDEO TAB -->
+  <div id="panelVideo">
+    <div class="input-area">
+      <label class="input-label">YouTube URL</label>
+      <input type="text" class="url-input" id="videoUrl"
+        placeholder="https://www.youtube.com/watch?v=...">
+    </div>
+  </div>
+
+  <!-- TEXT TAB -->
+  <div id="panelText" style="display:none;">
+    <div class="text-input-toggle">
+      <button class="toggle-btn active" id="toggleUrl" onclick="switchTextMode('url')">URL</button>
+      <button class="toggle-btn" id="togglePaste" onclick="switchTextMode('paste')">직접 붙여넣기</button>
+    </div>
+    <div id="textUrlArea" class="input-area">
+      <label class="input-label">웹페이지 URL</label>
+      <input type="text" class="url-input" id="textUrl"
+        placeholder="https://...">
+    </div>
+    <div id="textPasteArea" class="input-area" style="display:none;">
+      <label class="input-label">텍스트 붙여넣기</label>
+      <textarea class="textarea-input" id="textPaste"
+        placeholder="분석할 텍스트를 붙여넣으세요..."></textarea>
+    </div>
+  </div>
+
+  <!-- DEPTH -->
+  <div class="depth-row">
+    <span class="depth-label">DEPTH</span>
+    <div class="depth-options">
+      <button class="depth-btn" id="depthQuick" onclick="setDepth('QUICK')">QUICK</button>
+      <button class="depth-btn active" id="depthStandard" onclick="setDepth('STANDARD')">STANDARD</button>
+      <button class="depth-btn" id="depthDeep" onclick="setDepth('DEEP')">DEEP</button>
+    </div>
+    <span class="depth-desc" id="depthDesc">핵심 내용 소화</span>
+  </div>
+
+  <!-- ERROR -->
+  <div class="error-box" id="errorBox"></div>
+
+  <!-- RUN -->
+  <button class="run-btn" id="runBtn" onclick="runScan()">SCAN</button>
+
+  <!-- STATUS -->
+  <div class="status-bar" id="statusBar">
+    <div class="spinner"></div>
+    <span id="statusText">분석 준비 중...</span>
+  </div>
+
+  <!-- REPORT -->
+  <div class="report-container" id="reportContainer"></div>
+
+</main>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────
+let currentTab = 'video';
+let currentTextMode = 'url';
+let currentDepth = 'STANDARD';
+let currentReport = null;
+
+const DEPTH_DESC = {
+  QUICK: '빠른 판단용 — OVERVIEW + VERDICT',
+  STANDARD: '핵심 내용 소화',
+  DEEP: '완전 대체 + 비판적 확장 사고'
+};
+
+// ─── INIT ─────────────────────────────────────────────────
+window.onload = () => {
+  const ck = localStorage.getItem('claude_key');
+  const gk = localStorage.getItem('gemini_key');
+  if (ck) document.getElementById('claudeKeyInput').value = ck;
+  if (gk) document.getElementById('geminiKeyInput').value = gk;
+  setDepth('STANDARD');
+};
+
+// ─── API MODAL ────────────────────────────────────────────
+function openModal() {
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.remove('open');
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+}
+
+function saveKeys() {
+  const ck = document.getElementById('claudeKeyInput').value.trim();
+  const gk = document.getElementById('geminiKeyInput').value.trim();
+  if (ck) localStorage.setItem('claude_key', ck);
+  if (gk) localStorage.setItem('gemini_key', gk);
+  closeModal();
+  showToast('API KEYS SAVED');
+}
+
+// ─── TAB / MODE ───────────────────────────────────────────
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById('panelVideo').style.display = tab === 'video' ? 'block' : 'none';
+  document.getElementById('panelText').style.display = tab === 'text' ? 'block' : 'none';
+  document.getElementById('tabVideo').classList.toggle('active', tab === 'video');
+  document.getElementById('tabText').classList.toggle('active', tab === 'text');
+  clearReport();
+}
+
+function switchTextMode(mode) {
+  currentTextMode = mode;
+  document.getElementById('textUrlArea').style.display = mode === 'url' ? 'block' : 'none';
+  document.getElementById('textPasteArea').style.display = mode === 'paste' ? 'block' : 'none';
+  document.getElementById('toggleUrl').classList.toggle('active', mode === 'url');
+  document.getElementById('togglePaste').classList.toggle('active', mode === 'paste');
+}
+
+function setDepth(depth) {
+  currentDepth = depth;
+  ['Quick', 'Standard', 'Deep'].forEach(d => {
+    document.getElementById('depth' + d).classList.toggle('active', d.toUpperCase() === depth);
+  });
+  document.getElementById('depthDesc').textContent = DEPTH_DESC[depth];
+}
+
+// ─── MAIN SCAN ────────────────────────────────────────────
+async function runScan() {
+  const claudeKey = localStorage.getItem('claude_key');
+  const geminiKey = localStorage.getItem('gemini_key');
+
+  hideError();
+  clearReport();
+
+  // Validation
+  if (!claudeKey) { showError('Claude API Key가 설정되지 않았습니다. 우측 상단 API KEYS를 클릭해 입력해주세요.'); return; }
+
+  let inputContent = '';
+  let inputType = ''; // 'youtube_url' | 'web_url' | 'text' | 'paste'
+
+  if (currentTab === 'video') {
+    const url = document.getElementById('videoUrl').value.trim();
+    if (!url) { showError('YouTube URL을 입력해주세요.'); return; }
+    if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
+      showError('유효한 YouTube URL을 입력해주세요.'); return;
+    }
+    if (!geminiKey) { showError('YouTube 분석을 위해 Gemini API Key가 필요합니다.'); return; }
+    inputContent = url;
+    inputType = 'youtube_url';
+  } else {
+    if (currentTextMode === 'url') {
+      const url = document.getElementById('textUrl').value.trim();
+      if (!url) { showError('URL을 입력해주세요.'); return; }
+      if (!geminiKey) { showError('URL 분석을 위해 Gemini API Key가 필요합니다.'); return; }
+      inputContent = url;
+      inputType = 'web_url';
+    } else {
+      const text = document.getElementById('textPaste').value.trim();
+      if (!text) { showError('분석할 텍스트를 붙여넣어주세요.'); return; }
+      inputContent = text;
+      inputType = 'paste';
+    }
+  }
+
+  setLoading(true);
+
+  try {
+    let rawAnalysis = '';
+
+    if (inputType === 'youtube_url' || inputType === 'web_url') {
+      rawAnalysis = await callGemini(geminiKey, inputContent, inputType);
+    } else {
+      rawAnalysis = inputContent;
+    }
+
+    const report = await callClaude(claudeKey, rawAnalysis, currentDepth, inputType, inputContent);
+    currentReport = report;
+    renderReport(report);
+
+  } catch (err) {
+    showError(err.message || '분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+  } finally {
+    setLoading(false);
+  }
+}
+
+// ─── GEMINI CALL ──────────────────────────────────────────
+async function callGemini(apiKey, input, inputType) {
+  updateStatus('Gemini가 콘텐츠를 분석 중...');
+
+  const isYoutube = inputType === 'youtube_url';
+  const prompt = isYoutube
+    ? `다음 YouTube 영상을 분석해주세요: ${input}\n\n영상의 전체 내용을 상세하게 분석하여 다음을 포함해주세요:\n- 영상의 주제와 핵심 목적\n- 화자의 주요 주장과 근거\n- 중요한 세부 내용과 예시\n- 타임스탬프와 각 구간의 내용 (가능한 경우)\n- 전반적인 맥락과 배경\n\n최대한 상세하고 구조적으로 분석해주세요.`
+    : `다음 URL의 웹페이지 내용을 분석해주세요: ${input}\n\n페이지의 전체 내용을 상세하게 분석하여 다음을 포함해주세요:\n- 주제와 핵심 목적\n- 주요 주장과 근거\n- 중요한 세부 내용과 데이터\n- 전반적인 맥락과 배경\n\n최대한 상세하고 구조적으로 분석해주세요.`;
+
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { maxOutputTokens: 8192, temperature: 0.3 }
+  };
+
+  // Retry with exponential backoff
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+      );
+
+      if (res.status === 429 || res.status === 503) {
+        if (attempt < 2) {
+          await sleep((attempt + 1) * 3000);
+          continue;
+        }
+      }
+
+      if (!res.ok) {
+        const err = await res.json();
+        // URL 접근 실패 시 안내
+        if (!isYoutube) {
+          throw new Error('페이지 접근에 실패했습니다. 직접 붙여넣기 모드로 전환해 텍스트를 붙여넣어 주세요.');
+        }
+        throw new Error(`Gemini API 오류: ${err.error?.message || res.status}`);
+      }
+
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error('Gemini에서 응답을 받지 못했습니다.');
+      return text;
+
+    } catch (e) {
+      if (attempt === 2) throw e;
+      await sleep((attempt + 1) * 3000);
+    }
+  }
+}
+
+// ─── CLAUDE CALL ──────────────────────────────────────────
+async function callClaude(apiKey, content, depth, inputType, originalInput) {
+  updateStatus('Claude가 보고서를 작성 중...');
+
+  const depthInstructions = {
+    QUICK: `QUICK 모드: OVERVIEW와 VERDICT 섹션만 작성하세요. 각 섹션은 간결하게 3-5문장으로 제한합니다.`,
+    STANDARD: `STANDARD 모드: 모든 섹션을 작성하되 각 항목을 3-5줄로 압축합니다. MAIN ARGUMENTS는 5개, DETAILS & NUANCE는 3개 항목으로 제한합니다. EXPAND LENS 섹션은 포함하지 않습니다.`,
+    DEEP: `DEEP 모드: 모든 섹션을 최대 깊이로 작성합니다. MAIN ARGUMENTS는 5-7개, DETAILS & NUANCE는 4-5개, EXPAND LENS는 모든 하위 항목을 포함합니다.`
+  };
+
+  const isVideo = inputType === 'youtube_url';
+  const hasTimestamps = isVideo;
+
+  const systemPrompt = `당신은 콘텐츠 분석 전문가입니다. 주어진 콘텐츠를 분석하여 정확히 아래 JSON 스키마로만 응답하세요. JSON 외의 어떤 텍스트도 포함하지 마세요.
+
+${depthInstructions[depth]}
+
+카테고리 자동 감지: "ai_tool" (AI 툴/튜토리얼) | "world_affairs" (세계정세/뉴스) | "knowledge" (지식/교양) | "other"
+
+JSON 스키마:
+{
+  "category": "ai_tool|world_affairs|knowledge|other",
+  "category_label": "카테고리 한국어 레이블",
+  "source_info": "출처 정보 (제목, 채널명, 날짜 등 파악 가능한 것)",
+  "overview": "2-3문장의 핵심 한 줄 결론 + 콘텐츠 목적 설명",
+  "context": "${depth !== 'QUICK' ? '이 콘텐츠가 만들어진 배경과 전제 설명' : ''}",
+  "main_arguments": [
+    { "title": "주장 제목", "body": "상세 내용" }
+  ],
+  "details_nuance": [
+    "조건부 발언, 예외, 뉘앙스, 데이터 불일치 등"
+  ],
+  "timestamps": [
+    { "time": "MM:SS", "description": "구간 설명" }
+  ],
+  "verdict": "종합 판단 + 카테고리별 핵심 포인트",
+  "caution": "주의할 점 (출처 편향, 데이터 신뢰도 등) — 1-2문장",
+  "expand_lens": {
+    "possibility": "${depth === 'DEEP' ? '이 내용이 사실이라면 어떤 가능성이 열리는가' : ''}",
+    "connections": "${depth === 'DEEP' ? '연결되는 다른 분야나 개념' : ''}",
+    "unsaid": "${depth === 'DEEP' ? '말하지 않았지만 중요한 것' : ''}",
+    "other_angle": "${depth === 'DEEP' ? '다른 각도에서 보면' : ''}",
+    "next_questions": ["질문1", "질문2", "질문3"]
+  },
+  "search_guide": {
+    "youtube_queries": ["검색어1", "검색어2", "검색어3"],
+    "web_queries": ["검색어1", "검색어2", "검색어3"],
+    "explore_directions": [
+      { "topic": "탐구 주제", "query": "추천 검색어" }
+    ]
+  }
+}
+
+timestamps 배열: ${hasTimestamps ? 'YouTube 영상이므로 3-6개 핵심 구간을 포함하세요.' : '텍스트 콘텐츠이므로 빈 배열([])로 두세요.'}
+expand_lens: ${depth === 'DEEP' ? '모든 항목을 작성하세요.' : depth === 'STANDARD' ? 'next_questions만 3개 작성하고 나머지는 빈 문자열로 두세요.' : 'next_questions만 2개 작성하고 나머지는 빈 문자열로 두세요.'}`;
+
+  const userMessage = inputType === 'paste'
+    ? `다음 텍스트를 분석해주세요:\n\n${content}`
+    : `다음은 콘텐츠 분석 결과입니다. 이를 바탕으로 보고서를 작성하세요:\n\n${content}`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 16000,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userMessage }]
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(`Claude API 오류: ${err.error?.message || res.status}`);
+  }
+
+  const data = await res.json();
+  const raw = data.content?.[0]?.text || '';
+
+  // 3-stage JSON parsing
+  let parsed = null;
+
+  // Stage 1: direct parse
+  try { parsed = JSON.parse(raw); } catch {}
+
+  // Stage 2: extract JSON block
+  if (!parsed) {
+    try {
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (match) parsed = JSON.parse(match[0]);
+    } catch {}
+  }
+
+  // Stage 3: object assembly from key patterns
+  if (!parsed) {
+    try {
+      const clean = raw.replace(/```json|```/g, '').trim();
+      parsed = JSON.parse(clean);
+    } catch {}
+  }
+
+  if (!parsed) throw new Error('보고서 파싱에 실패했습니다. 다시 시도해주세요.');
+  return parsed;
+}
+
+// ─── RENDER REPORT ────────────────────────────────────────
+function renderReport(r) {
+  const container = document.getElementById('reportContainer');
+  container.innerHTML = '';
+
+  let html = '';
+
+  // HEADER
+  html += `
+    <div class="report-header">
+      <div class="report-title-block">
+        <div class="report-tag">${r.category_label || r.category}</div>
+        <div class="report-meta">${escHtml(r.source_info || '')}</div>
+      </div>
+      <div class="report-depth-badge">${currentDepth}</div>
+    </div>
+  `;
+
+  // OVERVIEW
+  if (r.overview) {
+    html += section('OVERVIEW', `<div class="section-content">${escHtml(r.overview)}</div>`);
+  }
+
+  // CONTEXT (STANDARD, DEEP)
+  if (r.context && currentDepth !== 'QUICK') {
+    html += section('CONTEXT', `<div class="section-content">${escHtml(r.context)}</div>`);
+  }
+
+  // MAIN ARGUMENTS
+  if (r.main_arguments?.length && currentDepth !== 'QUICK') {
+    let args = r.main_arguments.map(a => `
+      <div class="arg-item">
+        <div class="arg-title">${escHtml(a.title)}</div>
+        <div class="arg-body">${escHtml(a.body)}</div>
+      </div>
+    `).join('');
+    html += section('MAIN ARGUMENTS', args);
+  }
+
+  // DETAILS & NUANCE
+  if (r.details_nuance?.length && currentDepth !== 'QUICK') {
+    let items = r.details_nuance.map(d =>
+      `<div class="arg-item"><div class="arg-body">${escHtml(d)}</div></div>`
+    ).join('');
+    html += section('DETAILS & NUANCE', items);
+  }
+
+  // TIMESTAMPS
+  if (r.timestamps?.length) {
+    let rows = r.timestamps.map(t =>
+      `<tr><td>${escHtml(t.time)}</td><td>${escHtml(t.description)}</td></tr>`
+    ).join('');
+    html += section('TIMESTAMP INDEX', `<table class="ts-table">${rows}</table>`);
+  }
+
+  // VERDICT
+  if (r.verdict) {
+    let cautionHtml = r.caution
+      ? `<div class="caution-box">⚠ ${escHtml(r.caution)}</div>` : '';
+    html += section('VERDICT',
+      `<div class="section-content">${escHtml(r.verdict)}</div>${cautionHtml}`
+    );
+  }
+
+  // EXPAND LENS (DEEP only)
+  if (currentDepth === 'DEEP' && r.expand_lens) {
+    const el = r.expand_lens;
+    let expandHtml = '<div class="expand-section">';
+
+    if (el.possibility) expandHtml += expandItem('이 내용이 사실이라면, 어떤 가능성이 열리는가', el.possibility);
+    if (el.connections) expandHtml += expandItem('연결되는 다른 분야 / 개념', el.connections);
+    if (el.unsaid) expandHtml += expandItem('말하지 않았지만 이 맥락에서 중요한 것', el.unsaid);
+    if (el.other_angle) expandHtml += expandItem('다른 각도에서 보면', el.other_angle);
+
+    if (el.next_questions?.length) {
+      expandHtml += `
+        <div class="expand-item">
+          <div class="expand-q">다음에 탐구할 질문</div>
+          <ul class="next-q-list">
+            ${el.next_questions.map(q => `<li>${escHtml(q)}</li>`).join('')}
+          </ul>
+        </div>
+      `;
+    }
+
+    expandHtml += '</div>';
+    html += section('EXPAND LENS', expandHtml);
+  } else if (currentDepth !== 'QUICK' && r.expand_lens?.next_questions?.length) {
+    // STANDARD: next_questions only
+    html += section('NEXT QUESTIONS',
+      `<ul class="next-q-list">${r.expand_lens.next_questions.map(q => `<li>${escHtml(q)}</li>`).join('')}</ul>`
+    );
+  }
+
+  // ACTION BUTTONS
+  html += `
+    <div class="action-row">
+      <button class="action-btn primary" onclick="copyMarkdown()">COPY AS MARKDOWN</button>
+      <button class="action-btn" onclick="toggleSearchGuide()" id="searchGuideBtn">🔍 더 탐구하기</button>
+    </div>
+  `;
+
+  // SEARCH GUIDE (hidden by default)
+  if (r.search_guide) {
+    const sg = r.search_guide;
+    html += `<div class="search-guide" id="searchGuide">`;
+    html += `<div class="search-guide-header">SEARCH GUIDE</div>`;
+
+    if (sg.youtube_queries?.length) {
+      html += `<div class="search-col">
+        <div class="search-col-label">YouTube 검색어</div>
+        <div class="search-chips">
+          ${sg.youtube_queries.map(q => searchChip(q)).join('')}
+        </div>
+      </div>`;
+    }
+
+    if (sg.web_queries?.length) {
+      html += `<div class="search-col">
+        <div class="search-col-label">웹 검색어</div>
+        <div class="search-chips">
+          ${sg.web_queries.map(q => searchChip(q)).join('')}
+        </div>
+      </div>`;
+    }
+
+    if (sg.explore_directions?.length) {
+      html += `<div class="search-col">
+        <div class="search-col-label">탐구 방향</div>
+        <div class="explore-directions">
+          ${sg.explore_directions.map(d => `
+            <div class="explore-item">
+              <span class="explore-arrow">→ ${escHtml(d.topic)}</span>
+              <span style="color:var(--text-muted);font-size:12px;">${escHtml(d.query)}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+    }
+
+    html += `</div>`;
+  }
+
+  container.innerHTML = html;
+  container.classList.add('visible');
+}
+
+// ─── HELPERS ─────────────────────────────────────────────
+function section(label, content) {
+  return `
+    <div class="report-section">
+      <div class="section-label">${label}</div>
+      ${content}
+    </div>
+  `;
+}
+
+function expandItem(q, a) {
+  return `
+    <div class="expand-item">
+      <div class="expand-q">${q}</div>
+      <div class="expand-a">${escHtml(a)}</div>
+    </div>
+  `;
+}
+
+function searchChip(query) {
+  return `
+    <div class="search-chip">
+      <span>${escHtml(query)}</span>
+      <button class="copy-chip-btn" onclick="copyChip(this, '${escAttr(query)}')">COPY</button>
+    </div>
+  `;
+}
+
+function copyChip(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'COPIED';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'COPY'; btn.classList.remove('copied'); }, 1500);
+  });
+}
+
+function toggleSearchGuide() {
+  const el = document.getElementById('searchGuide');
+  if (!el) return;
+  el.classList.toggle('visible');
+  const btn = document.getElementById('searchGuideBtn');
+  btn.textContent = el.classList.contains('visible') ? '✕ 닫기' : '🔍 더 탐구하기';
+}
+
+function copyMarkdown() {
+  if (!currentReport) return;
+  const r = currentReport;
+  let md = `# SCAN REPORT — ${currentDepth}\n`;
+  md += `**카테고리:** ${r.category_label || r.category}\n`;
+  md += `**출처:** ${r.source_info || ''}\n\n`;
+
+  if (r.overview) md += `## OVERVIEW\n${r.overview}\n\n`;
+  if (r.context && currentDepth !== 'QUICK') md += `## CONTEXT\n${r.context}\n\n`;
+
+  if (r.main_arguments?.length && currentDepth !== 'QUICK') {
+    md += `## MAIN ARGUMENTS\n`;
+    r.main_arguments.forEach((a, i) => {
+      md += `\n**${i+1}. ${a.title}**\n${a.body}\n`;
+    });
+    md += '\n';
+  }
+
+  if (r.details_nuance?.length && currentDepth !== 'QUICK') {
+    md += `## DETAILS & NUANCE\n`;
+    r.details_nuance.forEach(d => { md += `- ${d}\n`; });
+    md += '\n';
+  }
+
+  if (r.timestamps?.length) {
+    md += `## TIMESTAMP INDEX\n`;
+    r.timestamps.forEach(t => { md += `- **${t.time}** — ${t.description}\n`; });
+    md += '\n';
+  }
+
+  if (r.verdict) {
+    md += `## VERDICT\n${r.verdict}\n`;
+    if (r.caution) md += `\n> ⚠ ${r.caution}\n`;
+    md += '\n';
+  }
+
+  if (currentDepth === 'DEEP' && r.expand_lens) {
+    md += `## EXPAND LENS\n`;
+    const el = r.expand_lens;
+    if (el.possibility) md += `\n**가능성**\n${el.possibility}\n`;
+    if (el.connections) md += `\n**연결 개념**\n${el.connections}\n`;
+    if (el.unsaid) md += `\n**말하지 않은 것**\n${el.unsaid}\n`;
+    if (el.other_angle) md += `\n**다른 각도**\n${el.other_angle}\n`;
+    if (el.next_questions?.length) {
+      md += `\n**다음 탐구 질문**\n`;
+      el.next_questions.forEach(q => { md += `1. ${q}\n`; });
+    }
+    md += '\n';
+  }
+
+  navigator.clipboard.writeText(md).then(() => showToast('COPIED TO CLIPBOARD'));
+}
+
+function setLoading(on) {
+  document.getElementById('runBtn').disabled = on;
+  document.getElementById('runBtn').textContent = on ? 'SCANNING...' : 'SCAN';
+  document.getElementById('statusBar').classList.toggle('visible', on);
+  if (!on) document.getElementById('statusBar').classList.remove('visible');
+}
+
+function updateStatus(msg) {
+  document.getElementById('statusText').textContent = msg;
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorBox');
+  el.textContent = msg;
+  el.classList.add('visible');
+}
+
+function hideError() {
+  document.getElementById('errorBox').classList.remove('visible');
+}
+
+function clearReport() {
+  const c = document.getElementById('reportContainer');
+  c.classList.remove('visible');
+  c.innerHTML = '';
+  currentReport = null;
+  hideError();
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/\n/g, '<br>');
+}
+
+function escAttr(str) {
+  if (!str) return '';
+  return String(str).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>
