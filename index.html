@@ -852,6 +852,31 @@ let currentTextMode = 'url';
 let currentDepth = 'STANDARD';
 let currentReport = null;
 
+// Gemini 캐시
+let geminiCache = {
+  key: null,      // 캐시된 인풋 식별자 (URL 또는 텍스트 해시)
+  result: null    // Gemini 분석 결과
+};
+
+// 인풋 변경 감지 — 캐시 무효화
+function getInputKey() {
+  if (currentTab === 'video') {
+    return 'video::' + document.getElementById('videoUrl').value.trim();
+  } else if (currentTextMode === 'url') {
+    return 'weburl::' + document.getElementById('textUrl').value.trim();
+  } else {
+    const text = document.getElementById('textPaste').value.trim();
+    return 'paste::' + text.slice(0, 200); // 앞 200자로 식별
+  }
+}
+
+function invalidateCacheOnInput() {
+  const key = getInputKey();
+  if (geminiCache.key && geminiCache.key !== key) {
+    geminiCache = { key: null, result: null };
+  }
+}
+
 const DEPTH_DESC = {
   QUICK: '빠른 판단용 — OVERVIEW + VERDICT',
   STANDARD: '핵심 내용 소화',
@@ -865,6 +890,11 @@ window.onload = () => {
   if (ck) document.getElementById('claudeKeyInput').value = ck;
   if (gk) document.getElementById('geminiKeyInput').value = gk;
   setDepth('STANDARD');
+
+  // 인풋 변경 시 캐시 무효화
+  document.getElementById('videoUrl').addEventListener('input', invalidateCacheOnInput);
+  document.getElementById('textUrl').addEventListener('input', invalidateCacheOnInput);
+  document.getElementById('textPaste').addEventListener('input', invalidateCacheOnInput);
 };
 
 // ─── API MODAL ────────────────────────────────────────────
@@ -927,7 +957,7 @@ async function runScan() {
   if (!claudeKey) { showError('Claude API Key가 설정되지 않았습니다. 우측 상단 API KEYS를 클릭해 입력해주세요.'); return; }
 
   let inputContent = '';
-  let inputType = ''; // 'youtube_url' | 'web_url' | 'text' | 'paste'
+  let inputType = ''; // 'youtube_url' | 'web_url' | 'paste'
 
   if (currentTab === 'video') {
     const url = document.getElementById('videoUrl').value.trim();
@@ -957,9 +987,19 @@ async function runScan() {
 
   try {
     let rawAnalysis = '';
+    const inputKey = getInputKey();
+    const needsGemini = inputType === 'youtube_url' || inputType === 'web_url';
 
-    if (inputType === 'youtube_url' || inputType === 'web_url') {
-      rawAnalysis = await callGemini(geminiKey, inputContent, inputType);
+    if (needsGemini) {
+      // 캐시 히트 — Gemini 재호출 없이 Claude만
+      if (geminiCache.key === inputKey && geminiCache.result) {
+        updateStatus('캐시된 분석 데이터 사용 중 — Claude가 보고서 재작성 중...');
+        rawAnalysis = geminiCache.result;
+      } else {
+        // 캐시 미스 — Gemini 새로 호출
+        rawAnalysis = await callGemini(geminiKey, inputContent, inputType);
+        geminiCache = { key: inputKey, result: rawAnalysis };
+      }
     } else {
       rawAnalysis = inputContent;
     }
@@ -989,24 +1029,38 @@ async function callGemini(apiKey, input, inputType) {
     generationConfig: { maxOutputTokens: 8192, temperature: 0.3 }
   };
 
-  // Retry with exponential backoff
-  for (let attempt = 0; attempt < 3; attempt++) {
+  // 재시도 간격 (ms): 5s → 10s → 20s → 30s → 40s
+  const retryDelays = [5000, 10000, 20000, 30000, 40000];
+  const maxAttempts = 5;
+  let lastError = null;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
+      if (attempt > 0) {
+        const waitSec = retryDelays[attempt - 1] / 1000;
+        // 카운트다운 표시
+        for (let i = waitSec; i > 0; i--) {
+          updateStatus(`Gemini 서버 혼잡 — ${attempt + 1}번째 재시도 대기 중... (${i}초)`);
+          await sleep(1000);
+        }
+        updateStatus(`Gemini 재연결 중... (${attempt + 1}/${maxAttempts})`);
+      }
+
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
         { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
       );
 
-      if (res.status === 429 || res.status === 503) {
-        if (attempt < 2) {
-          await sleep((attempt + 1) * 3000);
-          continue;
-        }
+      // 과부하/서버 오류 → 재시도
+      if (res.status === 429 || res.status === 503 || res.status === 500) {
+        const errData = await res.json().catch(() => ({}));
+        lastError = `Gemini API 오류 (${res.status}): ${errData.error?.message || '서버 혼잡'}`;
+        if (attempt < maxAttempts - 1) continue;
+        throw new Error(lastError);
       }
 
       if (!res.ok) {
-        const err = await res.json();
-        // URL 접근 실패 시 안내
+        const err = await res.json().catch(() => ({}));
         if (!isYoutube) {
           throw new Error('페이지 접근에 실패했습니다. 직접 붙여넣기 모드로 전환해 텍스트를 붙여넣어 주세요.');
         }
@@ -1016,11 +1070,19 @@ async function callGemini(apiKey, input, inputType) {
       const data = await res.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!text) throw new Error('Gemini에서 응답을 받지 못했습니다.');
+
+      if (attempt > 0) updateStatus(`${attempt + 1}번째 시도에서 성공했습니다. Claude가 보고서 작성 중...`);
       return text;
 
     } catch (e) {
-      if (attempt === 2) throw e;
-      await sleep((attempt + 1) * 3000);
+      // 재시도 불필요한 오류는 즉시 throw
+      if (e.message.includes('붙여넣기') || e.message.includes('API 오류')) {
+        if (!e.message.includes('서버 혼잡') && !e.message.includes('429') && !e.message.includes('503')) {
+          throw e;
+        }
+      }
+      lastError = e.message;
+      if (attempt === maxAttempts - 1) throw new Error(`Gemini 연결 실패 (${maxAttempts}회 시도): ${lastError}`);
     }
   }
 }
