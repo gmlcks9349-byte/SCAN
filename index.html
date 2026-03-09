@@ -375,6 +375,121 @@
 
   @keyframes spin { to { transform: rotate(360deg); } }
 
+  /* YOUTUBE GUIDE */
+  .input-note {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 8px;
+    letter-spacing: 0.5px;
+    line-height: 1.6;
+  }
+
+  /* FILE UPLOAD */
+  .file-drop-zone {
+    border: 2px dashed var(--border);
+    padding: 32px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    background: var(--surface2);
+  }
+  .file-drop-zone:hover, .file-drop-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-dim);
+  }
+  .file-drop-icon {
+    font-size: 28px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+  }
+  .file-drop-label {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 3px;
+    color: var(--text-sub);
+    margin-bottom: 6px;
+  }
+  .file-drop-sub {
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+  .file-selected {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    font-size: 12px;
+    color: var(--accent);
+    font-family: 'Space Mono', monospace;
+  }
+  .file-clear-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 4px;
+  }
+  .file-clear-btn:hover { color: var(--accent); }
+
+  .youtube-guide {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+
+  .guide-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  .guide-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .guide-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: var(--text-sub);
+    line-height: 1.5;
+  }
+
+  .step-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 13px;
+    color: var(--accent);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    width: 22px;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* TIMESTAMP LINK */
+  .ts-link {
+    color: var(--accent);
+    text-decoration: none;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+  }
+  .ts-link:hover { text-decoration: underline; }
+
   /* REPORT */
   .report-container {
     display: none;
@@ -789,10 +904,23 @@
 
   <!-- VIDEO TAB -->
   <div id="panelVideo">
-    <div class="input-area">
-      <label class="input-label">YouTube URL</label>
-      <input type="text" class="url-input" id="videoUrl"
-        placeholder="https://www.youtube.com/watch?v=...">
+    <div class="file-drop-zone" id="fileDropZone" onclick="document.getElementById('videoFileInput').click()">
+      <input type="file" id="videoFileInput" accept="video/mp4,video/mov,video/webm,video/avi" style="display:none" onchange="handleVideoFile(this.files[0])">
+      <div class="file-drop-icon">▶</div>
+      <div class="file-drop-label" id="fileDropLabel">DROP VIDEO OR CLICK</div>
+      <div class="file-drop-sub">MP4 / MOV / WEBM · MAX 50MB · Gemini가 직접 분석</div>
+    </div>
+    <div class="file-selected" id="fileSelected" style="display:none;">
+      <span id="fileSelectedName"></span>
+      <button class="file-clear-btn" onclick="clearVideoFile()">✕</button>
+    </div>
+    <div class="youtube-guide" style="margin-top:16px;">
+      <div class="guide-title">스크립트로 분석하려면</div>
+      <div class="guide-steps">
+        <div class="guide-step"><span class="step-num">1</span>영상 하단 <strong>···</strong> → <strong>자막 열기</strong></div>
+        <div class="guide-step"><span class="step-num">2</span>전체 선택 후 복사</div>
+        <div class="guide-step"><span class="step-num">3</span>TEXT 탭 → <strong>직접 붙여넣기</strong></div>
+      </div>
     </div>
   </div>
 
@@ -852,6 +980,9 @@ let currentTextMode = 'url';
 let currentDepth = 'STANDARD';
 let currentReport = null;
 
+// 현재 선택된 영상 파일
+let currentVideoFile = null;
+
 // Gemini 캐시
 let geminiCache = {
   key: null,      // 캐시된 인풋 식별자 (URL 또는 텍스트 해시)
@@ -861,7 +992,7 @@ let geminiCache = {
 // 인풋 변경 감지 — 캐시 무효화
 function getInputKey() {
   if (currentTab === 'video') {
-    return 'video::' + document.getElementById('videoUrl').value.trim();
+    return 'video::tab';
   } else if (currentTextMode === 'url') {
     return 'weburl::' + document.getElementById('textUrl').value.trim();
   } else {
@@ -892,7 +1023,6 @@ window.onload = () => {
   setDepth('STANDARD');
 
   // 인풋 변경 시 캐시 무효화
-  document.getElementById('videoUrl').addEventListener('input', invalidateCacheOnInput);
   document.getElementById('textUrl').addEventListener('input', invalidateCacheOnInput);
   document.getElementById('textPaste').addEventListener('input', invalidateCacheOnInput);
 };
@@ -960,14 +1090,13 @@ async function runScan() {
   let inputType = ''; // 'youtube_url' | 'web_url' | 'paste'
 
   if (currentTab === 'video') {
-    const url = document.getElementById('videoUrl').value.trim();
-    if (!url) { showError('YouTube URL을 입력해주세요.'); return; }
-    if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
-      showError('유효한 YouTube URL을 입력해주세요.'); return;
+    if (!currentVideoFile) {
+      showError('분석할 영상 파일을 업로드해주세요. (MP4/MOV/WEBM, 최대 50MB)');
+      return;
     }
-    if (!geminiKey) { showError('YouTube 분석을 위해 Gemini API Key가 필요합니다.'); return; }
-    inputContent = url;
-    inputType = 'youtube_url';
+    if (!geminiKey) { showError('영상 분석을 위해 Gemini API Key가 필요합니다.'); return; }
+    inputContent = currentVideoFile;
+    inputType = 'video_file';
   } else {
     if (currentTextMode === 'url') {
       const url = document.getElementById('textUrl').value.trim();
@@ -988,19 +1117,20 @@ async function runScan() {
   try {
     let rawAnalysis = '';
     const inputKey = getInputKey();
-    const needsGemini = inputType === 'youtube_url' || inputType === 'web_url';
 
-    if (needsGemini) {
-      // 캐시 히트 — Gemini 재호출 없이 Claude만
+    if (inputType === 'video_file') {
+      rawAnalysis = await callGeminiWithVideo(geminiKey, inputContent);
+    } else if (inputType === 'web_url') {
+      // 웹 URL — Gemini 캐싱 적용
       if (geminiCache.key === inputKey && geminiCache.result) {
         updateStatus('캐시된 분석 데이터 사용 중 — Claude가 보고서 재작성 중...');
         rawAnalysis = geminiCache.result;
       } else {
-        // 캐시 미스 — Gemini 새로 호출
         rawAnalysis = await callGemini(geminiKey, inputContent, inputType);
         geminiCache = { key: inputKey, result: rawAnalysis };
       }
     } else {
+      // 직접 붙여넣기
       rawAnalysis = inputContent;
     }
 
@@ -1012,6 +1142,156 @@ async function runScan() {
     showError(err.message || '분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
   } finally {
     setLoading(false);
+  }
+}
+
+
+// ─── VIDEO FILE HANDLER ───────────────────────────────────
+function handleVideoFile(file) {
+  if (!file) return;
+  if (file.size > 50 * 1024 * 1024) {
+    showError('파일 크기가 50MB를 초과합니다. 720p로 다운받아 주세요.');
+    return;
+  }
+  currentVideoFile = file;
+  document.getElementById('fileDropLabel').textContent = file.name;
+  document.getElementById('fileSelected').style.display = 'flex';
+  document.getElementById('fileSelectedName').textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`;
+  hideError();
+}
+
+function clearVideoFile() {
+  currentVideoFile = null;
+  document.getElementById('videoFileInput').value = '';
+  document.getElementById('fileDropLabel').textContent = 'DROP VIDEO OR CLICK';
+  document.getElementById('fileSelected').style.display = 'none';
+}
+
+// 드래그앤드롭 이벤트
+document.addEventListener('DOMContentLoaded', () => {
+  const zone = document.getElementById('fileDropZone');
+  if (!zone) return;
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (file) handleVideoFile(file);
+  });
+});
+
+// ─── GEMINI FILE API (영상 업로드) ────────────────────────
+async function callGeminiWithVideo(apiKey, file) {
+  updateStatus('영상을 Gemini에 업로드 중...');
+
+  // 1단계: File API로 영상 업로드
+  const uploadRes = await fetch(
+    `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: {
+        'X-Goog-Upload-Protocol': 'multipart',
+        'Content-Type': `multipart/related; boundary=boundary_scan`
+      },
+      body: (() => {
+        const meta = JSON.stringify({ file: { display_name: file.name } });
+        const enc = new TextEncoder();
+        const metaPart = enc.encode(
+          `--boundary_scan\r\nContent-Type: application/json\r\n\r\n${meta}\r\n--boundary_scan\r\nContent-Type: ${file.type || 'video/mp4'}\r\n\r\n`
+        );
+        const endPart = enc.encode('\r\n--boundary_scan--');
+        const blob = new Blob([metaPart, file, endPart]);
+        return blob;
+      })()
+    }
+  );
+
+  if (!uploadRes.ok) {
+    const err = await uploadRes.json().catch(() => ({}));
+    throw new Error(`영상 업로드 실패: ${err.error?.message || uploadRes.status}`);
+  }
+
+  const uploadData = await uploadRes.json();
+  const fileUri = uploadData.file?.uri;
+  if (!fileUri) throw new Error('업로드된 파일 URI를 받지 못했습니다.');
+
+  // 2단계: 파일 처리 완료 대기
+  updateStatus('Gemini가 영상을 처리 중...');
+  let fileState = uploadData.file?.state;
+  let pollCount = 0;
+  while (fileState === 'PROCESSING' && pollCount < 30) {
+    await sleep(3000);
+    const pollRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/files/${uploadData.file.name.split('/').pop()}?key=${apiKey}`
+    );
+    const pollData = await pollRes.json();
+    fileState = pollData.file?.state;
+    pollCount++;
+    updateStatus(`Gemini가 영상을 처리 중... (${pollCount * 3}초)`);
+  }
+
+  if (fileState !== 'ACTIVE') throw new Error('영상 처리에 실패했습니다. 다시 시도해주세요.');
+
+  // 3단계: 영상 분석 요청
+  updateStatus('Gemini가 영상을 분석 중...');
+  const prompt = `이 영상을 분석해주세요.
+영상의 전체 내용을 상세하게 분석하여 다음을 포함해주세요:
+- 영상의 주제와 핵심 목적
+- 화자의 주요 주장과 근거
+- 중요한 세부 내용과 예시
+- 타임스탬프와 각 구간의 내용 (MM:SS 형식으로)
+- 시각적으로 중요한 장면이나 정보
+- 전반적인 맥락과 배경
+최대한 상세하고 구조적으로 분석해주세요.`;
+
+  const body = {
+    contents: [{ parts: [
+      { file_data: { mime_type: file.type || 'video/mp4', file_uri: fileUri } },
+      { text: prompt }
+    ]}],
+    generationConfig: { maxOutputTokens: 8192, temperature: 0.3 }
+  };
+
+  const retryDelays = [5000, 10000, 20000, 30000, 40000];
+  const maxAttempts = 5;
+  let lastError = null;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      if (attempt > 0) {
+        const waitSec = retryDelays[attempt - 1] / 1000;
+        for (let i = waitSec; i > 0; i--) {
+          updateStatus(`Gemini 서버 혼잡 — ${attempt + 1}번째 재시도 대기 중... (${i}초)`);
+          await sleep(1000);
+        }
+      }
+
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+      );
+
+      if (res.status === 429 || res.status === 503 || res.status === 500) {
+        const errData = await res.json().catch(() => ({}));
+        lastError = `Gemini API 오류 (${res.status}): ${errData.error?.message || '서버 혼잡'}`;
+        if (attempt < maxAttempts - 1) continue;
+        throw new Error(lastError);
+      }
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(`Gemini API 오류: ${err.error?.message || res.status}`);
+      }
+
+      const data = await res.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) throw new Error('Gemini에서 응답을 받지 못했습니다.');
+      return text;
+
+    } catch (e) {
+      if (attempt === maxAttempts - 1) throw new Error(`Gemini 연결 실패 (${maxAttempts}회 시도): ${lastError || e.message}`);
+    }
   }
 }
 
@@ -1246,9 +1526,20 @@ function renderReport(r) {
 
   // TIMESTAMPS
   if (r.timestamps?.length) {
-    let rows = r.timestamps.map(t =>
-      `<tr><td>${escHtml(t.time)}</td><td>${escHtml(t.description)}</td></tr>`
-    ).join('');
+    const videoUrl = '';
+    const videoId = videoUrl.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
+    let rows = r.timestamps.map(t => {
+      const timeStr = escHtml(t.time);
+      let timeCell = timeStr;
+      if (videoId) {
+        const parts = t.time.split(':');
+        const totalSecs = parts.length === 2
+          ? parseInt(parts[0]) * 60 + parseInt(parts[1])
+          : parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+        timeCell = `<a class="ts-link" href="https://www.youtube.com/watch?v=${videoId}&t=${totalSecs}s" target="_blank">${timeStr}</a>`;
+      }
+      return `<tr><td>${timeCell}</td><td>${escHtml(t.description)}</td></tr>`;
+    }).join('');
     html += section('TIMESTAMP INDEX', `<table class="ts-table">${rows}</table>`);
   }
 
@@ -1414,7 +1705,19 @@ function copyMarkdown() {
 
   if (r.timestamps?.length) {
     md += `## TIMESTAMP INDEX\n`;
-    r.timestamps.forEach(t => { md += `- **${t.time}** — ${t.description}\n`; });
+    const videoUrl = '';
+    const videoId = videoUrl.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
+    r.timestamps.forEach(t => {
+      if (videoId) {
+        const parts = t.time.split(':');
+        const totalSecs = parts.length === 2
+          ? parseInt(parts[0]) * 60 + parseInt(parts[1])
+          : parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+        md += `- [${t.time}](https://www.youtube.com/watch?v=${videoId}&t=${totalSecs}s) — ${t.description}\n`;
+      } else {
+        md += `- **${t.time}** — ${t.description}\n`;
+      }
+    });
     md += '\n';
   }
 
