@@ -1186,54 +1186,39 @@ async function callGeminiWithVideo(apiKey, file) {
   updateStatus('영상을 Gemini에 업로드 중...');
 
   // 1단계: File API로 영상 업로드
-  const uploadRes = await fetch(
-    `https://generativelanguage.googleapis.com/upload/v1beta/files?key=${apiKey}`,
-    {
-      method: 'POST',
-      headers: {
-        'X-Goog-Upload-Protocol': 'multipart',
-        'Content-Type': `multipart/related; boundary=boundary_scan`
-      },
-      body: (() => {
-        const meta = JSON.stringify({ file: { display_name: file.name } });
-        const enc = new TextEncoder();
-        const metaPart = enc.encode(
-          `--boundary_scan\r\nContent-Type: application/json\r\n\r\n${meta}\r\n--boundary_scan\r\nContent-Type: ${file.type || 'video/mp4'}\r\n\r\n`
-        );
-        const endPart = enc.encode('\r\n--boundary_scan--');
-        const blob = new Blob([metaPart, file, endPart]);
-        return blob;
-      })()
-    }
-  );
+  // 1단계: FormData로 영상 업로드
+  const metadata = JSON.stringify({ file: { display_name: file.name } });
+  const formData = new FormData();
+  formData.append('metadata', new Blob([metadata], { type: 'application/json' }));
+  formData.append('file', file, file.name);
 
+  const uploadRes = await fetch(
+    `https://generativelanguage.googleapis.com/upload/v1beta/files?uploadType=multipart&key=${apiKey}`,
+    { method: 'POST', body: formData }
+  );
   if (!uploadRes.ok) {
     const err = await uploadRes.json().catch(() => ({}));
     throw new Error(`영상 업로드 실패: ${err.error?.message || uploadRes.status}`);
   }
-
   const uploadData = await uploadRes.json();
-  const fileUri = uploadData.file?.uri;
+  const fileUri = uploadData?.file?.uri;
   if (!fileUri) throw new Error('업로드된 파일 URI를 받지 못했습니다.');
 
-  // 2단계: 파일 처리 완료 대기
+  // 2단계: ACTIVE 상태 대기
   updateStatus('Gemini가 영상을 처리 중...');
-  let fileState = uploadData.file?.state;
-  let pollCount = 0;
-  while (fileState === 'PROCESSING' && pollCount < 30) {
-    await sleep(3000);
-    const pollRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/files/${uploadData.file.name.split('/').pop()}?key=${apiKey}`
-    );
+  const fileId = fileUri.split('/').pop();
+  for (let i = 0; i < 40; i++) {
+    const pollRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/files/${fileId}?key=${apiKey}`);
     const pollData = await pollRes.json();
-    fileState = pollData.file?.state;
-    pollCount++;
-    updateStatus(`Gemini가 영상을 처리 중... (${pollCount * 3}초)`);
+    const fileState = pollData?.state || pollData?.file?.state;
+    updateStatus(`Gemini가 영상을 처리 중... (${i + 1}/40, state: ${fileState || 'PROCESSING'})`);
+    if (fileState === 'ACTIVE') break;
+    if (fileState === 'FAILED') throw new Error('Gemini 영상 처리에 실패했습니다.');
+    if (i === 39) throw new Error('영상 처리 시간 초과 (200초). 다시 시도해주세요.');
+    await sleep(5000);
   }
 
-  if (fileState !== 'ACTIVE') throw new Error('영상 처리에 실패했습니다. 다시 시도해주세요.');
-
-  // 3단계: 영상 분석 요청
+    // 3단계: 영상 분석 요청
   updateStatus('Gemini가 영상을 분석 중...');
   const prompt = `이 영상을 분석해주세요.
 영상의 전체 내용을 상세하게 분석하여 다음을 포함해주세요:
